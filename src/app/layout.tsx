@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible_Next, Bricolage_Grotesque } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", subsets: ["latin"], weight: ["500", "600", "700"] });
-const atkinson = Atkinson_Hyperlegible_Next({ variable: "--font-atkinson", subsets: ["latin"], weight: ["400", "500", "600"], adjustFontFallback: false });
+// Self-hosted (src/fonts) so builds never depend on reaching Google Fonts.
+const bricolage = localFont({ src: "../fonts/bricolage-latin.woff2", weight: "500 700", variable: "--font-bricolage" });
+const atkinson = localFont({ src: "../fonts/atkinson-latin.woff2", weight: "400 600", variable: "--font-atkinson" });
 
 export const metadata: Metadata = {
   title: "Pretty Recipes",
