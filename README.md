@@ -1,6 +1,6 @@
 # Pretty Recipes
 
-Turn a messy recipe into a clean page you'll want to print. Paste text, drop a photo of a cookbook page, or share a TikTok or Instagram link; review what was read; pick a style; download it as PDF, PNG, Markdown or JSON. French and English.
+Turn a messy recipe into a clean page you'll want to print. Paste text, drop a photo of a cookbook page, or share a link to a recipe website (Marmiton, Allrecipes, food blogs…), TikTok or Instagram; review what was read; pick a style; download it as PDF, PNG, Markdown or JSON. French and English.
 
 The design and roadmap are in the [implementation plan](https://claude.ai/code/artifact/a91a16e9-713a-4f2a-b567-cca3e6ae47b8).
 
@@ -39,7 +39,8 @@ PDF export drives headless Chromium. Locally, install it once with `pnpm exec pl
 ## How it works
 
 ```
-text / photo / TikTok / Instagram
+text / photo / website / TikTok / Instagram
+        │  src/lib/web        (schema.org Recipe JSON-LD, else the page's article text)
         │  src/lib/social     (TikTok oEmbed, Instagram embed page)
         ▼
   AI or offline reader       src/lib/ai, src/lib/recipe/heuristic.ts
@@ -54,5 +55,7 @@ text / photo / TikTok / Instagram
 ```
 
 Nothing is stored on the server; the current recipe is kept in the browser.
+
+Website links are fetched by the server, which only follows public http(s) addresses on default ports, so a link cannot make it call your local network. Most recipe sites publish their recipe as schema.org JSON-LD; the title, servings and times then come straight from the page. A few sites refuse automated requests; paste the recipe as text in that case.
 
 The **Step grid** style draws each step as a cell that spans exactly the ingredients and earlier steps it combines, so the steps nest until the last one wraps the whole dish. The layout comes from each step's `uses` list (src/lib/recipe/grid.ts). The AI reader fills it in; when the grid style is selected, the editor shows a "Combines" row under every step to fix it by hand.

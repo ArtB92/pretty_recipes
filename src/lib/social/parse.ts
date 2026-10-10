@@ -2,19 +2,22 @@
 
 const NAMED: Record<string, string> = {
   amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", hellip: "…", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“",
+  ndash: "–", mdash: "—", deg: "°", times: "×", frac12: "½", frac14: "¼", frac34: "¾", frac13: "⅓", frac23: "⅔",
+  frac18: "⅛", eacute: "é", egrave: "è", ecirc: "ê", euml: "ë", agrave: "à", acirc: "â", ccedil: "ç", icirc: "î",
+  iuml: "ï", ocirc: "ô", ucirc: "û", ugrave: "ù", oelig: "œ", laquo: "«", raquo: "»",
 };
 
 export function decodeEntities(s: string): string {
-  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, ent: string) => {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]*);/gi, (whole, ent: string) => {
     if (ent[0] === "#") {
       const code = ent[1].toLowerCase() === "x" ? parseInt(ent.slice(2), 16) : parseInt(ent.slice(1), 10);
       return Number.isFinite(code) ? String.fromCodePoint(code) : whole;
     }
-    return NAMED[ent.toLowerCase()] ?? whole;
+    return NAMED[ent] ?? NAMED[ent.toLowerCase()] ?? whole;
   });
 }
 
-function htmlToText(html: string): string {
+export function htmlToText(html: string): string {
   return decodeEntities(
     html
       .replace(/<br\s*\/?>/gi, "\n")

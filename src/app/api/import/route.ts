@@ -4,7 +4,9 @@ import { heuristicDraft } from "@/lib/recipe/heuristic";
 import { NotARecipeError, normalizeDraft } from "@/lib/recipe/normalize";
 import type { Recipe, SourceKind } from "@/lib/recipe/schema";
 import { clientKey, rateLimit } from "@/lib/rate-limit";
-import { fetchSocialPost, SocialFetchError } from "@/lib/social/fetch";
+import { fetchSocialPost, isSocialUrl, SocialFetchError } from "@/lib/social/fetch";
+import { fetchRecipePage, WebFetchError } from "@/lib/web/fetch";
+import type { PageRecipe } from "@/lib/web/recipe-page";
 
 const MAX_TEXT = 20_000;
 const MAX_IMAGES = 4;
@@ -59,6 +61,29 @@ async function fromText(
   }
 }
 
+/** Facts a page states in its structured data beat what the reader inferred. */
+function withPageFacts(recipe: Recipe, page: PageRecipe): Recipe {
+  const r = { ...recipe, confidence: { ...recipe.confidence } };
+  if (page.title) {
+    r.title = page.title;
+    r.confidence.title = 1;
+  }
+  if (page.servings) {
+    r.servings = page.servings;
+    r.confidence.servings = 1;
+  }
+  if (page.prepMin !== null || page.cookMin !== null) {
+    r.times = { ...r.times, prepMin: page.prepMin ?? r.times.prepMin, cookMin: page.cookMin ?? r.times.cookMin };
+  }
+  if (page.category) {
+    r.category = page.category;
+    r.confidence.category = 1;
+  }
+  if (page.description && !r.description) r.description = page.description;
+  if (page.tags.length && !r.tags.length) r.tags = page.tags;
+  return r;
+}
+
 export async function POST(request: Request) {
   const length = Number(request.headers.get("content-length") ?? 0);
   if (length > MAX_BODY) return fail(413, "too_large", "This upload is too large.");
@@ -82,9 +107,13 @@ export async function POST(request: Request) {
     let result: { recipe: Recipe; provider: ProviderName; warning: string | null };
     if (body.kind === "text") {
       result = await fromText(body.text, { kind: "text" });
-    } else if (body.kind === "link") {
+    } else if (body.kind === "link" && isSocialUrl(body.url)) {
       const post = await fetchSocialPost(body.url);
       result = await fromText(post.caption, { kind: post.platform, url: post.url, author: post.author });
+    } else if (body.kind === "link") {
+      const page = await fetchRecipePage(body.url);
+      result = await fromText(page.text, { kind: "web", url: page.url, author: page.structured?.author ?? page.host });
+      if (page.structured) result = { ...result, recipe: withPageFacts(result.recipe, page.structured) };
     } else {
       const provider = activeProvider();
       if (!supportsImages(provider)) {
@@ -100,7 +129,9 @@ export async function POST(request: Request) {
   } catch (err) {
     console.info(JSON.stringify({ event: "import", kind: body.kind, ms: Date.now() - started, ok: false, error: (err as Error).name }));
     if (err instanceof NotARecipeError) return fail(422, "not_a_recipe", err.message);
-    if (err instanceof SocialFetchError) return fail(err.code === "unsupported_url" ? 400 : 502, `link_${err.code}`, err.message);
+    if (err instanceof SocialFetchError || err instanceof WebFetchError) {
+      return fail(err.code === "unsupported_url" ? 400 : err.code === "no_recipe" ? 422 : 502, `link_${err.code}`, err.message);
+    }
     if (err instanceof ProviderError) return fail(err.code === "rate_limited" ? 429 : 502, `ai_${err.code}`, err.message);
     console.error(err);
     return fail(500, "internal", "Something went wrong while reading this recipe.");

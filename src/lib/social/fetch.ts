@@ -1,4 +1,5 @@
 import "server-only";
+import { safeFetch } from "@/lib/net";
 import { captionFromInstagramEmbed, captionFromOgDescription } from "./parse";
 
 export type SocialPlatform = "tiktok" | "instagram";
@@ -25,14 +26,13 @@ const HOSTS: Record<string, SocialPlatform> = {
   "m.instagram.com": "instagram",
 };
 
-const BROWSER_HEADERS = {
-  "user-agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
-  "accept-language": "fr-FR,fr;q=0.9,en;q=0.8",
-  accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-};
-
-const MAX_BYTES = 2_000_000;
+export function isSocialUrl(input: string): boolean {
+  try {
+    return new URL(input.trim()).hostname.toLowerCase() in HOSTS;
+  } catch {
+    return false;
+  }
+}
 
 /** Only TikTok and Instagram hosts over https are allowed, so the server cannot be pointed elsewhere. */
 export function classifyUrl(input: string): { url: URL; platform: SocialPlatform } {
@@ -50,50 +50,17 @@ export function classifyUrl(input: string): { url: URL; platform: SocialPlatform
   return { url, platform };
 }
 
-/** fetch with a size cap, a timeout, and redirects followed only within the allowed hosts. */
-async function safeFetch(start: URL, accept?: string): Promise<{ url: URL; status: number; body: string }> {
-  let url = start;
-  for (let hop = 0; hop < 4; hop++) {
-    const res = await fetch(url, {
-      headers: accept ? { ...BROWSER_HEADERS, accept } : BROWSER_HEADERS,
-      redirect: "manual",
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
-      const next = new URL(res.headers.get("location")!, url);
-      classifyUrl(next.toString());
-      url = next;
-      continue;
-    }
-    const reader = res.body?.getReader();
-    let received = 0;
-    const chunks: Uint8Array[] = [];
-    if (reader) {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        received += value.byteLength;
-        if (received > MAX_BYTES) {
-          await reader.cancel();
-          break;
-        }
-        chunks.push(value);
-      }
-    }
-    return { url, status: res.status, body: Buffer.concat(chunks).toString("utf8") };
-  }
-  throw new SocialFetchError("The link redirects too many times.", "blocked");
-}
+const social = (accept?: string) => ({ accept, check: (u: URL) => void classifyUrl(u.toString()) });
 
 async function fetchTikTok(url: URL): Promise<SocialPost> {
   // Short links (vm.tiktok.com) must be expanded before oEmbed accepts them.
   let canonical = url;
   if (url.hostname.startsWith("vm.") || url.hostname.startsWith("vt.")) {
-    canonical = (await safeFetch(url)).url;
+    canonical = (await safeFetch(url, social())).url;
   }
   const oembed = new URL("https://www.tiktok.com/oembed");
   oembed.searchParams.set("url", canonical.toString());
-  const res = await safeFetch(oembed, "application/json");
+  const res = await safeFetch(oembed, social("application/json"));
   if (res.status === 404 || res.status === 400) {
     throw new SocialFetchError("TikTok could not find this video. It may be private or deleted.", "not_found");
   }
@@ -122,13 +89,13 @@ async function fetchInstagram(url: URL): Promise<SocialPost> {
   const canonical = `https://www.instagram.com/${kind}/${shortcode}/`;
 
   // The public embed page carries the full caption without a login.
-  const embed = await safeFetch(new URL(`https://www.instagram.com/p/${shortcode}/embed/captioned/`));
+  const embed = await safeFetch(new URL(`https://www.instagram.com/p/${shortcode}/embed/captioned/`), social());
   if (embed.status === 200) {
     const found = captionFromInstagramEmbed(embed.body);
     if (found?.caption) return { platform: "instagram", url: canonical, ...found };
   }
   // Fallback: the post page's meta description holds a (sometimes shortened) caption.
-  const page = await safeFetch(new URL(canonical));
+  const page = await safeFetch(new URL(canonical), social());
   if (page.status === 404) throw new SocialFetchError("Instagram could not find this post.", "not_found");
   if (page.status === 200) {
     const found = captionFromOgDescription(page.body);
