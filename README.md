@@ -48,9 +48,11 @@ text / photo / TikTok / Instagram
   canonical Recipe           src/lib/recipe/schema.ts (Zod)
         │  edited in the browser, scaled and converted by toView()
         ▼
-  styles                     src/components/templates (Classic, Recipe card)
+  styles                     src/components/templates (Classic, Step grid, Recipe card)
         ▼
   PDF (/api/pdf, Chromium) · PNG (in the browser) · Markdown · JSON
 ```
 
 Nothing is stored on the server; the current recipe is kept in the browser.
+
+The **Step grid** style draws each step as a cell that spans exactly the ingredients and earlier steps it combines, so the steps nest until the last one wraps the whole dish. The layout comes from each step's `uses` list (src/lib/recipe/grid.ts). The AI reader fills it in; when the grid style is selected, the editor shows a "Combines" row under every step to fix it by hand.

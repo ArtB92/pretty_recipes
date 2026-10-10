@@ -5,7 +5,7 @@ import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 const Body = z.object({
   recipe: Recipe,
-  style: z.enum(["classic", "card"]),
+  style: z.enum(["classic", "grid", "card"]),
   units: z.enum(["original", "metric", "us"]),
   servings: z.number().positive().max(1000).nullable(),
 });

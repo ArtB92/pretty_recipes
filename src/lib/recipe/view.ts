@@ -1,5 +1,5 @@
 import type { Ingredient, Language, Recipe, UnitCode } from "./schema";
-import { formatAmount, formatMinutes, transformAmount, type UnitSystem } from "./units";
+import { counterpartAmount, formatAmount, formatMinutes, transformAmount, type UnitSystem } from "./units";
 
 const EN_OF_UNITS = new Set<UnitCode>(["pinch", "dash", "clove", "slice", "can", "bunch", "sprig", "piece", "packet", "stick"]);
 
@@ -16,7 +16,8 @@ function joiner(unit: UnitCode | null, name: string, lang: Language): string {
 
 export type ViewOptions = { servings: number | null; units: UnitSystem };
 
-export type IngredientView = Ingredient & { amount: string; line: string };
+/** `dualLine` adds the other unit system in parentheses: "4 oz (115 g) unsalted butter". */
+export type IngredientView = Ingredient & { amount: string; line: string; dualLine: string };
 export type RecipeView = Omit<Recipe, "ingredientGroups"> & {
   ingredientGroups: Array<{ id: string; name: string | null; items: IngredientView[] }>;
   servingsText: string | null;
@@ -39,7 +40,16 @@ export function toView(recipe: Recipe, opts: ViewOptions): RecipeView {
       const a = transformAmount({ quantity: it.quantity, quantityMax: it.quantityMax, unit: it.unit }, factor, opts.units);
       const amount = formatAmount(a, lang);
       const name = it.preparation ? `${it.name}, ${it.preparation}` : it.name;
-      return { ...it, ...a, amount, line: amount ? `${amount} ${joiner(a.unit, name, lang)}${name}` : name };
+      // Skip when the source already gives both: "1 cup (226 g) butter".
+      const alt = /^\(\s*\d/.test(name) ? null : counterpartAmount(a);
+      const join = joiner(a.unit, name, lang);
+      return {
+        ...it,
+        ...a,
+        amount,
+        line: amount ? `${amount} ${join}${name}` : name,
+        dualLine: amount ? `${amount}${alt ? ` (${formatAmount(alt, lang)})` : ""} ${join}${name}` : name,
+      };
     }),
   }));
 

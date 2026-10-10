@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import type { RecipeView } from "@/lib/recipe/view";
 
-export type StyleId = "classic" | "card";
-export const STYLE_IDS: StyleId[] = ["classic", "card"];
+export type StyleId = "classic" | "grid" | "card";
+export const STYLE_IDS: StyleId[] = ["classic", "grid", "card"];
 
 export type TemplateProps = { view: RecipeView; animate?: boolean };
 

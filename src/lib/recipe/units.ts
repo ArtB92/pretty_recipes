@@ -251,6 +251,28 @@ export function convertAmount(a: Amount, system: UnitSystem): Amount {
   };
 }
 
+/** The same amount in the other system, for pages that print both: "4 oz (115 g)", "¼ tsp (1.3 ml)". */
+export function counterpartAmount(a: Amount): Amount | null {
+  if (a.unit === null || a.quantity === null) return null;
+  if (a.unit === "tsp" || a.unit === "tbsp") {
+    // Measuring spoons are 5 and 15 ml on both sides of the Atlantic.
+    const per = a.unit === "tsp" ? 5 : 15;
+    return { unit: "ml", quantity: a.quantity * per, quantityMax: a.quantityMax === null ? null : a.quantityMax * per };
+  }
+  const us = ["cup", "fl_oz", "oz", "lb"].includes(a.unit);
+  const metric = ["ml", "cl", "dl", "l", "g", "kg"].includes(a.unit);
+  if (!us && !metric) return null;
+  return convertAmount(a, us ? "metric" : "us");
+}
+
+/** °C and °F side by side, rounded the way oven dials read (350 °F, 175 °C). */
+export function formatTemperature(t: { value: number; unit: "C" | "F" }): string {
+  const round = (n: number, step: number) => Math.round(n / step) * step;
+  const f = (t.value * 9) / 5 + 32;
+  const other = t.unit === "C" ? round(f, f > 250 ? 25 : 5) : round(((t.value - 32) * 5) / 9, 5);
+  return `${t.value} °${t.unit} (${other} °${t.unit === "C" ? "F" : "C"})`;
+}
+
 export function transformAmount(a: Amount, factor: number, system: UnitSystem): Amount {
   return convertAmount(scaleAmount(a, factor), system);
 }

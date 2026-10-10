@@ -22,6 +22,68 @@ function nextId(r: Recipe, prefix: "i" | "s" | "g"): string {
   return `${prefix}${max + 1}`;
 }
 
+/** Grid style only: the short label and what the step combines, which shape the nesting. */
+function StepLinks({ studio, index }: { studio: Studio; index: number }) {
+  const { t } = useUi();
+  const { recipe: r, update } = studio;
+  const step = r.steps[index];
+  const options = [
+    ...r.steps.slice(0, index).map((s, i) => ({ id: s.id, label: `${t.step} ${i + 1}` })),
+    ...r.ingredientGroups.flatMap((g) => g.items.map((it) => ({ id: it.id, label: it.name || "…" }))),
+  ];
+  // An ingredient or step result goes into one step only; the grid follows the first one.
+  const takenBy = new Map<string, number>();
+  r.steps.forEach((s, i) => s.uses.forEach((u) => takenBy.has(u) || takenBy.set(u, i)));
+
+  const toggle = (id: string) =>
+    update((x) => {
+      const target = x.steps[index];
+      target.uses = target.uses.includes(id) ? target.uses.filter((u) => u !== id) : [...target.uses, id];
+      return x;
+    });
+
+  return (
+    <div className="flex flex-col gap-2 rounded-[12px] bg-mist/50 p-2.5">
+      <label className="flex items-center gap-2 text-[13px] text-charcoal-soft">
+        <span className="shrink-0">{t.gridLabel}</span>
+        <CommitInput
+          className={cn(inputClass, "py-1.5")}
+          placeholder={t.gridLabelHint}
+          value={step.action ?? ""}
+          onCommit={(v) =>
+            update((x) => {
+              x.steps[index].action = v.trim() || null;
+              return x;
+            })
+          }
+        />
+      </label>
+      <div role="group" aria-label={`${t.combines} (${t.step} ${index + 1})`} className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-[13px] text-charcoal-soft">{t.combines}</span>
+        {options.map((o) => {
+          const on = step.uses.includes(o.id);
+          const elsewhere = !on && takenBy.has(o.id) && takenBy.get(o.id)! < index;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(o.id)}
+              className={cn(
+                "rounded-full border px-2.5 py-0.5 text-[13px] transition-colors",
+                on ? "border-basil bg-basil text-white" : "border-mist-strong bg-surface hover:border-basil",
+                elsewhere && "opacity-50",
+              )}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ReviewEditor({ studio }: { studio: Studio }) {
   const { t } = useUi();
   const { recipe: r, update } = studio;
@@ -244,19 +306,22 @@ export function ReviewEditor({ studio }: { studio: Studio }) {
           {r.steps.map((s, i) => (
             <li key={s.id} className={cn("flex items-start gap-2 rounded-[12px] p-1", unsure(s.id) && "bg-saffron-tint")}>
               <span className="mt-2 w-6 shrink-0 text-right font-display font-semibold text-basil">{i + 1}</span>
-              <textarea
-                aria-label={`${t.steps} ${i + 1}`}
-                className={cn(inputClass, "min-h-[44px] resize-y")}
-                rows={2}
-                value={s.text}
-                onChange={(e) =>
-                  update((x) => {
-                    x.steps[i].text = e.target.value;
-                    delete x.confidence[s.id];
-                    return x;
-                  })
-                }
-              />
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <textarea
+                  aria-label={`${t.steps} ${i + 1}`}
+                  className={cn(inputClass, "min-h-[44px] resize-y")}
+                  rows={2}
+                  value={s.text}
+                  onChange={(e) =>
+                    update((x) => {
+                      x.steps[i].text = e.target.value;
+                      delete x.confidence[s.id];
+                      return x;
+                    })
+                  }
+                />
+                {studio.style === "grid" && <StepLinks studio={studio} index={i} />}
+              </div>
               <div className="flex shrink-0 flex-col">
                 <Button
                   variant="ghost"

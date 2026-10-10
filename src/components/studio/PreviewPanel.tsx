@@ -105,6 +105,7 @@ export function PreviewPanel({ studio }: { studio: Studio }) {
             onChange={setStyle}
             options={[
               { value: "classic", label: t.styleClassic, hint: t.styleClassicHint },
+              { value: "grid", label: t.styleGrid, hint: t.styleGridHint },
               { value: "card", label: t.styleCard, hint: t.styleCardHint },
             ]}
           />

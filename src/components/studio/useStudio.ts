@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { StyleId } from "@/components/templates";
+import { STYLE_IDS, type StyleId } from "@/components/templates";
 import { load, save } from "@/lib/client/storage";
 import { Recipe } from "@/lib/recipe/schema";
 import { SAMPLE_RECIPE } from "@/lib/recipe/sample";
@@ -35,7 +35,7 @@ export function useStudio() {
     /* eslint-disable react-hooks/set-state-in-effect -- one-time restore from browser storage */
     setRecipe(parsed.data);
     setIsSample(Boolean(saved.isSample));
-    setStyle(saved.style === "card" ? "card" : "classic");
+    setStyle(STYLE_IDS.includes(saved.style as StyleId) ? (saved.style as StyleId) : "classic");
     setUnits(["original", "metric", "us"].includes(saved.units) ? saved.units : "original");
     setServings(typeof saved.servings === "number" ? saved.servings : null);
     /* eslint-enable react-hooks/set-state-in-effect */
