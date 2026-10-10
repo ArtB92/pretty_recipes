@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+/*
+ * Pretty Recipes tokens: cool enamel and fresh herbs.
+ * Radius carries hierarchy: panels 28px, cards 14px, chips full.
+ */
+:root {
+  --enamel: #f7f9fa;
+  --mist: #e3eaed;
+  --mist-strong: #cfd9dd;
+  --surface: #ffffff;
+  --charcoal: #23282c;
+  --charcoal-soft: #5a646b;
+  --basil: #2d7a57;
+  --basil-strong: #22603f;
+  --basil-tint: #e4f1ea;
+  --saffron: #f2b03a;
+  --saffron-tint: #fdf1d8;
+  --beet: #b3264f;
+  --beet-tint: #fbe6ec;
+  --paper-shadow: 0 1px 2px rgb(35 40 44 / 0.06), 0 12px 32px -8px rgb(35 40 44 / 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --enamel: #15191b;
+    --mist: #232a2e;
+    --mist-strong: #333d42;
+    --surface: #1c2124;
+    --charcoal: #e9eef0;
+    --charcoal-soft: #a3aeb4;
+    --basil: #5cbf8d;
+    --basil-strong: #7bd3a6;
+    --basil-tint: #1d3329;
+    --saffron: #f2b03a;
+    --saffron-tint: #3a2f17;
+    --beet: #f07b9b;
+    --beet-tint: #3b1d26;
+    --paper-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  }
+}
+
+@theme inline {
+  --color-enamel: var(--enamel);
+  --color-mist: var(--mist);
+  --color-mist-strong: var(--mist-strong);
+  --color-surface: var(--surface);
+  --color-charcoal: var(--charcoal);
+  --color-charcoal-soft: var(--charcoal-soft);
+  --color-basil: var(--basil);
+  --color-basil-strong: var(--basil-strong);
+  --color-basil-tint: var(--basil-tint);
+  --color-saffron: var(--saffron);
+  --color-saffron-tint: var(--saffron-tint);
+  --color-beet: var(--beet);
+  --color-beet-tint: var(--beet-tint);
+  --font-display: var(--font-bricolage);
+  --font-sans: var(--font-atkinson);
+  --radius-panel: 28px;
+  --radius-card: 14px;
+  --shadow-paper: var(--paper-shadow);
+}
+
+html {
+  background: var(--enamel);
+  color: var(--charcoal);
+}
+
+body {
+  background: var(--enamel);
+  color: var(--charcoal);
+  font-family: var(--font-atkinson), system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 3px solid var(--basil);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--saffron-tint);
+}
+
+/* The one orchestrated moment: parsed lines land on the page one after another. */
+@keyframes land {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.land {
+  animation: land 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land {
+    animation: none;
+  }
+}
+
+/* Print pages are rendered by headless Chromium for PDF export. */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: white !important;
+  }
+}

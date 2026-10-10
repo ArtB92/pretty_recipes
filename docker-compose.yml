@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    image: pretty-recipes
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+
+  # Optional fully local AI. Start with: docker compose --profile ollama up
+  # then pull a model once: docker compose exec ollama ollama pull gemma3:4b
+  ollama:
+    image: ollama/ollama
+    profiles: ["ollama"]
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama:
